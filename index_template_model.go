@@ -2,6 +2,7 @@ package elasticsearch
 
 type IndexTemplateMapping struct {
 	Properties map[string]interface{} `json:"properties"`
+	Source     map[string]interface{} `json:"_source,omitempty"`
 }
 
 type IndexTemplateSetting struct {

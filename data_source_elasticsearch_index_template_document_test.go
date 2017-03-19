@@ -54,6 +54,10 @@ data "elasticsearch_index_template_document" "test" {
 	mapping {
 		type = "nginx"
 
+		_source {
+			enabled = false
+		}
+
 		property {
 			name   = "timestamp"
 			format = "date_time_no_millis"
@@ -115,6 +119,9 @@ var testAccElasticsearchIndexTemplateDocumentExpectedJSON = `{
           "format": "date_time_no_millis",
           "type": "date"
         }
+      },
+      "_source": {
+        "enabled": false
       }
     }
   },
