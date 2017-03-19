@@ -1,7 +1,9 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 
 	"strconv"
 
@@ -18,6 +20,7 @@ func dataSourceElasticsearchIndexTemplateDocument() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+
 			"mapping": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -54,6 +57,26 @@ func dataSourceElasticsearchIndexTemplateDocument() *schema.Resource {
 					},
 				},
 			},
+
+			"setting": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"number_of_shards": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+					},
+				},
+				Set: func(v interface{}) int {
+					var buf bytes.Buffer
+					m := v.(map[string]interface{})
+					buf.WriteString(fmt.Sprintf("%s-", m["number_of_shards"]))
+					return hashcode.String(buf.String())
+				},
+			},
+
 			"json": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -69,6 +92,7 @@ func dataSourceElasticsearchIndexTemplateDocumentRead(d *schema.ResourceData, me
 		doc.Template = template.(string)
 	}
 
+	// Mappings
 	var cfgMappings = d.Get("mapping").([]interface{})
 	mappings := make(map[string]IndexTemplateMapping)
 	for _, mappingI := range cfgMappings {
@@ -100,6 +124,18 @@ func dataSourceElasticsearchIndexTemplateDocumentRead(d *schema.ResourceData, me
 	}
 	doc.Mappings = mappings
 
+	// Settings
+	doc.Settings = IndexTemplateSetting{}
+
+	for _, cfgSetting := range d.Get("setting").(*schema.Set).List() {
+		cfg := cfgSetting.(map[string]interface{})
+
+		if val, ok := cfg["number_of_shards"]; ok {
+			doc.Settings.NumberOfShards = val.(int)
+		}
+	}
+
+	// Generate JSON
 	jsonDoc, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		// should never happen if the above code is correct
