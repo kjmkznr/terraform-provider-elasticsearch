@@ -58,6 +58,10 @@ data "elasticsearch_index_template_document" "test" {
 			enabled = false
 		}
 
+    _all {
+      enabled = false
+    }
+
 		property {
 			name   = "timestamp"
 			format = "date_time_no_millis"
@@ -121,6 +125,9 @@ var testAccElasticsearchIndexTemplateDocumentExpectedJSON = `{
         }
       },
       "_source": {
+        "enabled": false
+      },
+      "_all": {
         "enabled": false
       }
     }

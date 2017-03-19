@@ -42,6 +42,18 @@ func dataSourceElasticsearchIndexTemplateDocument() *schema.Resource {
 								},
 							},
 						},
+						"_all": {
+							Type:     schema.TypeSet,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"enabled": {
+										Type:     schema.TypeBool,
+										Optional: true,
+									},
+								},
+							},
+						},
 						"property": {
 							Type:     schema.TypeSet,
 							Optional: true,
@@ -136,6 +148,14 @@ func dataSourceElasticsearchIndexTemplateDocumentRead(d *schema.ResourceData, me
 			mapping.Source = make(map[string]interface{})
 			if val, ok := cfg["enabled"]; ok {
 				mapping.Source["enabled"] = val
+			}
+		}
+
+		for _, v := range cfgMap["_all"].(*schema.Set).List() {
+			cfg := v.(map[string]interface{})
+			mapping.All = make(map[string]interface{})
+			if val, ok := cfg["enabled"]; ok {
+				mapping.All["enabled"] = val
 			}
 		}
 
