@@ -94,8 +94,8 @@ resource "elasticsearch_index_template" "foobar" {
           "type": "date",
           "format":"date_time_no_millis"
         }
-	  }
-	}
+      }
+    }
   }
 }
 EOF
@@ -114,12 +114,12 @@ resource "elasticsearch_index_template" "foobar" {
           "type": "date",
           "format":"date_time_no_millis"
         },
-		"request_uri": {
+        "request_uri": {
           "type": "text",
           "index": "not_analyzed"
         }
-	  }
-	}
+      }
+    }
   }
 }
 EOF
