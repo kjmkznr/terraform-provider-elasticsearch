@@ -82,9 +82,16 @@ data "elasticsearch_index_template_document" "test" {
 			type   = "string"
 		}
 	}
+
+	setting {
+		number_of_shards = 1
+	}
 }
 `
 var testAccElasticsearchIndexTemplateDocumentExpectedJSON = `{
+  "settings": {
+    "number_of_shards": 1
+  },
   "mappings": {
     "apache": {
       "properties": {
