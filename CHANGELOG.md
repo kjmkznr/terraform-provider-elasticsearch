@@ -1,3 +1,7 @@
+## 0.0.5
+
+* data.elasticsearch_index_template_document: Add order
+
 ## 0.0.4
 
 * Support number_of_shards setting [#3](https://github.com/kjmkznr/terraform-provider-elasticsearch/pull/3)

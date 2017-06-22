@@ -101,6 +101,11 @@ func dataSourceElasticsearchIndexTemplateDocument() *schema.Resource {
 				},
 			},
 
+			"order": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+
 			"json": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -173,6 +178,11 @@ func dataSourceElasticsearchIndexTemplateDocumentRead(d *schema.ResourceData, me
 		if val, ok := cfg["number_of_shards"]; ok {
 			doc.Settings.NumberOfShards = val.(int)
 		}
+	}
+
+	// Order
+	if o, ok := d.GetOk("order"); ok {
+		doc.Order = uint(o.(int))
 	}
 
 	// Generate JSON
