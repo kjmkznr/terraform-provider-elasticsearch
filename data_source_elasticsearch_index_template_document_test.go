@@ -94,6 +94,8 @@ data "elasticsearch_index_template_document" "test" {
 	setting {
 		number_of_shards = 1
 	}
+
+	order = 1
 }
 `
 var testAccElasticsearchIndexTemplateDocumentExpectedJSON = `{
@@ -132,5 +134,6 @@ var testAccElasticsearchIndexTemplateDocumentExpectedJSON = `{
       }
     }
   },
-  "template": "access_log-*"
+  "template": "access_log-*",
+  "order": 1
 }`

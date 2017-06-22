@@ -14,4 +14,5 @@ type IndexTemplateDoc struct {
 	Settings IndexTemplateSetting            `json:"settings"`
 	Mappings map[string]IndexTemplateMapping `json:"mappings"`
 	Template string                          `json:"template"`
+	Order    uint                            `json:"order"`
 }
