@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/hashicorp/errwrap"
 	"github.com/hashicorp/terraform/terraform"
 )
 
@@ -33,17 +34,12 @@ func testStep(
 	if err != nil {
 		return state, fmt.Errorf("Error initializing context: %s", err)
 	}
-	if ws, es := ctx.Validate(); len(ws) > 0 || len(es) > 0 {
-		if len(es) > 0 {
-			estrs := make([]string, len(es))
-			for i, e := range es {
-				estrs[i] = e.Error()
-			}
-			return state, fmt.Errorf(
-				"Configuration is invalid.\n\nWarnings: %#v\n\nErrors: %#v",
-				ws, estrs)
+	if diags := ctx.Validate(); len(diags) > 0 {
+		if diags.HasErrors() {
+			return nil, errwrap.Wrapf("config is invalid: {{err}}", diags.Err())
 		}
-		log.Printf("[WARN] Config warnings: %#v", ws)
+
+		log.Printf("[WARN] Config warnings:\n%s", diags)
 	}
 
 	// Refresh!
@@ -53,34 +49,38 @@ func testStep(
 			"Error refreshing: %s", err)
 	}
 
-	// Plan!
-	if p, err := ctx.Plan(); err != nil {
-		return state, fmt.Errorf(
-			"Error planning: %s", err)
-	} else {
-		log.Printf("[WARN] Test: Step plan: %s", p)
-	}
-
-	// We need to keep a copy of the state prior to destroying
-	// such that destroy steps can verify their behaviour in the check
-	// function
-	stateBeforeApplication := state.DeepCopy()
-
-	// Apply!
-	state, err = ctx.Apply()
-	if err != nil {
-		return state, fmt.Errorf("Error applying: %s", err)
-	}
-
-	// Check! Excitement!
-	if step.Check != nil {
-		if step.Destroy {
-			if err := step.Check(stateBeforeApplication); err != nil {
-				return state, fmt.Errorf("Check failed: %s", err)
-			}
+	// If this step is a PlanOnly step, skip over this first Plan and subsequent
+	// Apply, and use the follow up Plan that checks for perpetual diffs
+	if !step.PlanOnly {
+		// Plan!
+		if p, err := ctx.Plan(); err != nil {
+			return state, fmt.Errorf(
+				"Error planning: %s", err)
 		} else {
-			if err := step.Check(state); err != nil {
-				return state, fmt.Errorf("Check failed: %s", err)
+			log.Printf("[WARN] Test: Step plan: %s", p)
+		}
+
+		// We need to keep a copy of the state prior to destroying
+		// such that destroy steps can verify their behaviour in the check
+		// function
+		stateBeforeApplication := state.DeepCopy()
+
+		// Apply!
+		state, err = ctx.Apply()
+		if err != nil {
+			return state, fmt.Errorf("Error applying: %s", err)
+		}
+
+		// Check! Excitement!
+		if step.Check != nil {
+			if step.Destroy {
+				if err := step.Check(stateBeforeApplication); err != nil {
+					return state, fmt.Errorf("Check failed: %s", err)
+				}
+			} else {
+				if err := step.Check(state); err != nil {
+					return state, fmt.Errorf("Check failed: %s", err)
+				}
 			}
 		}
 	}
