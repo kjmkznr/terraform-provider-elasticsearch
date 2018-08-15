@@ -6,7 +6,10 @@ import (
 )
 
 const (
+	// ElasticsearchURL endpoint
 	ElasticsearchURL = "ELASTICSEARCH_URL"
+	// ElasticsearchVersion major version, it should be prefixed "v"
+	ElasticsearchVersion = "ELASTICSEARCH_VERSION"
 )
 
 // Provider returns a terraform.ResourceProvider.
@@ -18,6 +21,12 @@ func Provider() terraform.ResourceProvider {
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc(ElasticsearchURL, nil),
 				Description: "url",
+			},
+			"es_version": &schema.Schema{
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc(ElasticsearchVersion, "v5"),
+				Description: "elasticsearch version",
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
@@ -32,7 +41,8 @@ func Provider() terraform.ResourceProvider {
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	config := Config{
-		URL: d.Get("url").(string),
+		URL:     d.Get("url").(string),
+		Version: d.Get("es_version").(string),
 	}
 
 	return config.NewClient()
