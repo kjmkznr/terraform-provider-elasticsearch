@@ -1,3 +1,8 @@
+## 0.0.6
+
+* Support Elasticsearch v6
+* Support terraform 0.11.7
+
 ## 0.0.5
 
 * data.elasticsearch_index_template_document: Add order
