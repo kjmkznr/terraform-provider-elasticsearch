@@ -39,3 +39,7 @@
 
 [[constraint]]
   name = "gopkg.in/olivere/elastic.v5"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "0.8.0"
