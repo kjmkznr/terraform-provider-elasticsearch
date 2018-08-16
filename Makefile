@@ -4,14 +4,11 @@ GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
 
 default: test vet
 
-tools:
-	go get -u github.com/kardianos/govendor
-
 clean:
 	rm -Rf $(CURDIR)/bin/*
 
 build: clean vet
-	govendor build -o $(CURDIR)/bin/terraform-provider-elasticsearch $(CURDIR)/builtin/bins/provider-elasticsearch/main.go
+	go build -o $(CURDIR)/bin/terraform-provider-elasticsearch $(CURDIR)/builtin/bins/provider-elasticsearch/main.go
 
 test: vet
 	TF_ACC= go test $(TEST) $(TESTARGS) -timeout=30s -parallel=4
