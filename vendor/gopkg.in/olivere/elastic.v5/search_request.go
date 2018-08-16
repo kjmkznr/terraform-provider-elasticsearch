@@ -5,7 +5,7 @@
 package elastic
 
 import (
-	"fmt"
+	"encoding/json"
 	"strings"
 )
 
@@ -13,54 +13,45 @@ import (
 // query details (see SearchSource).
 // It is used in combination with MultiSearch.
 type SearchRequest struct {
-	searchType   string // default in ES is "query_then_fetch"
-	indices      []string
-	types        []string
-	routing      *string
-	preference   *string
-	requestCache *bool
-	scroll       string
-	source       interface{}
+	searchType        string
+	indices           []string
+	types             []string
+	routing           *string
+	preference        *string
+	requestCache      *bool
+	ignoreUnavailable *bool
+	allowNoIndices    *bool
+	expandWildcards   string
+	scroll            string
+	source            interface{}
 }
 
 // NewSearchRequest creates a new search request.
 func NewSearchRequest() *SearchRequest {
-	return &SearchRequest{
-		indices: make([]string, 0),
-		types:   make([]string, 0),
-	}
+	return &SearchRequest{}
 }
 
-// SearchRequest must be one of "query_then_fetch", "query_and_fetch",
-// "scan", "count", "dfs_query_then_fetch", or "dfs_query_and_fetch".
-// Use one of the constants defined via SearchType.
+// SearchRequest must be one of dfs_query_then_fetch, query_then_fetch
+// or query_and_fetch (deprecated in 5.3).
 func (r *SearchRequest) SearchType(searchType string) *SearchRequest {
 	r.searchType = searchType
 	return r
 }
 
+// SearchTypeDfsQueryThenFetch sets search type to dfs_query_then_fetch.
 func (r *SearchRequest) SearchTypeDfsQueryThenFetch() *SearchRequest {
 	return r.SearchType("dfs_query_then_fetch")
 }
 
-func (r *SearchRequest) SearchTypeDfsQueryAndFetch() *SearchRequest {
-	return r.SearchType("dfs_query_and_fetch")
-}
-
+// SearchTypeQueryThenFetch sets search type to query_then_fetch.
 func (r *SearchRequest) SearchTypeQueryThenFetch() *SearchRequest {
 	return r.SearchType("query_then_fetch")
 }
 
+// SearchTypeQueryAndFetch sets search type to query_and_fetch which
+// was deprecated in 5.3.
 func (r *SearchRequest) SearchTypeQueryAndFetch() *SearchRequest {
 	return r.SearchType("query_and_fetch")
-}
-
-func (r *SearchRequest) SearchTypeScan() *SearchRequest {
-	return r.SearchType("scan")
-}
-
-func (r *SearchRequest) SearchTypeCount() *SearchRequest {
-	return r.SearchType("count")
 }
 
 func (r *SearchRequest) Index(indices ...string) *SearchRequest {
@@ -102,6 +93,27 @@ func (r *SearchRequest) RequestCache(requestCache bool) *SearchRequest {
 	return r
 }
 
+// IgnoreUnavailable indicates whether specified concrete indices should be
+// ignored when unavailable (missing or closed).
+func (s *SearchRequest) IgnoreUnavailable(ignoreUnavailable bool) *SearchRequest {
+	s.ignoreUnavailable = &ignoreUnavailable
+	return s
+}
+
+// AllowNoIndices indicates whether to ignore if a wildcard indices
+// expression resolves into no concrete indices. (This includes `_all` string or when no indices have been specified).
+func (s *SearchRequest) AllowNoIndices(allowNoIndices bool) *SearchRequest {
+	s.allowNoIndices = &allowNoIndices
+	return s
+}
+
+// ExpandWildcards indicates whether to expand wildcard expression to
+// concrete indices that are open, closed or both.
+func (s *SearchRequest) ExpandWildcards(expandWildcards string) *SearchRequest {
+	s.expandWildcards = expandWildcards
+	return s
+}
+
 func (r *SearchRequest) Scroll(scroll string) *SearchRequest {
 	r.scroll = scroll
 	return r
@@ -112,23 +124,13 @@ func (r *SearchRequest) SearchSource(searchSource *SearchSource) *SearchRequest 
 }
 
 func (r *SearchRequest) Source(source interface{}) *SearchRequest {
-	switch v := source.(type) {
-	case *SearchSource:
-		src, err := v.Source()
-		if err != nil {
-			// Do not do anything in case of an error
-			return r
-		}
-		r.source = src
-	default:
-		r.source = source
-	}
+	r.source = source
 	return r
 }
 
 // header is used e.g. by MultiSearch to get information about the search header
 // of one SearchRequest.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-multi-search.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-multi-search.html
 func (r *SearchRequest) header() interface{} {
 	h := make(map[string]interface{})
 	if r.searchType != "" {
@@ -154,15 +156,21 @@ func (r *SearchRequest) header() interface{} {
 	if r.routing != nil && *r.routing != "" {
 		h["routing"] = *r.routing
 	}
-
 	if r.preference != nil && *r.preference != "" {
 		h["preference"] = *r.preference
 	}
-
 	if r.requestCache != nil {
-		h["request_cache"] = fmt.Sprintf("%v", *r.requestCache)
+		h["request_cache"] = *r.requestCache
 	}
-
+	if r.ignoreUnavailable != nil {
+		h["ignore_unavailable"] = *r.ignoreUnavailable
+	}
+	if r.allowNoIndices != nil {
+		h["allow_no_indices"] = *r.allowNoIndices
+	}
+	if r.expandWildcards != "" {
+		h["expand_wildcards"] = r.expandWildcards
+	}
 	if r.scroll != "" {
 		h["scroll"] = r.scroll
 	}
@@ -170,9 +178,40 @@ func (r *SearchRequest) header() interface{} {
 	return h
 }
 
-// body is used by MultiSearch to get information about the search body
+// Body allows to access the search body of the request, as generated by the DSL.
+// Notice that Body is read-only. You must not change the request body.
+//
+// Body is used e.g. by MultiSearch to get information about the search body
 // of one SearchRequest.
-// See http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-multi-search.html
-func (r *SearchRequest) body() interface{} {
-	return r.source
+// See https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-multi-search.html
+func (r *SearchRequest) Body() (string, error) {
+	switch t := r.source.(type) {
+	default:
+		body, err := json.Marshal(r.source)
+		if err != nil {
+			return "", err
+		}
+		return string(body), nil
+	case *SearchSource:
+		src, err := t.Source()
+		if err != nil {
+			return "", err
+		}
+		body, err := json.Marshal(src)
+		if err != nil {
+			return "", err
+		}
+		return string(body), nil
+	case json.RawMessage:
+		return string(t), nil
+	case *json.RawMessage:
+		return string(*t), nil
+	case string:
+		return t, nil
+	case *string:
+		if t != nil {
+			return *t, nil
+		}
+		return "{}", nil
+	}
 }

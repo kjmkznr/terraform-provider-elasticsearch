@@ -18,7 +18,8 @@ Provider Configuration
 
 ```
 provider "elasticsearch" {
-  url = "http://localhost:9200"
+  url        = "http://localhost:9200"
+  es_version = "v5"
 }
 ```
 
@@ -31,6 +32,7 @@ provider "elasticsearch" {}
 ### Reference
 
 * `url` - (Required) Endpoint of elasticsearch
+* `es_version` - (Default v5) Version of elasticsearch
 
 Resources
 ---------
@@ -72,7 +74,7 @@ Testing
 -------
 
 ```
-$ ELASTICSEARCH_URL="http://127.0.0.1:9200" make testacc
+$ ELASTICSEARCH_URL="http://127.0.0.1:9200" ELASTICSEARCH_VERSION=v5 make testacc
 ```
 
 Licence

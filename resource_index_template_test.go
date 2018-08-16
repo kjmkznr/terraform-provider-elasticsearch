@@ -8,7 +8,6 @@ import (
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
-	elastic "gopkg.in/olivere/elastic.v5"
 )
 
 func TestAccIndexTemplate_Basic(t *testing.T) {
@@ -63,16 +62,14 @@ func TestAccIndexTemplate_Update(t *testing.T) {
 }
 
 func testAccCheckIndexTemplateDestroy(s *terraform.State) error {
-	client := testAccProvider.Meta().(*elastic.Client)
+	clients := testAccProvider.Meta().(*Clients)
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "elasticsearch_index_template" {
 			continue
 		}
 
-		svc := elastic.NewIndicesGetTemplateService(client)
-		svc.Name(rs.Primary.ID)
-		_, err := svc.Do(context.Background())
+		_, err := clients.V5Client.IndexGetTemplate(rs.Primary.ID).Do(context.Background())
 		if err == nil {
 			return fmt.Errorf("Index template still exists")
 		}
