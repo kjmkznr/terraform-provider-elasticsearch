@@ -1,7 +1,6 @@
 package elasticsearch
 
 import (
-	"context"
 	"fmt"
 	"regexp"
 	"testing"
@@ -16,7 +15,7 @@ func TestAccIndexTemplate_Basic(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckIndexTemplateDestroy,
 		Steps: []resource.TestStep{
-			resource.TestStep{
+			{
 				Config: testAccCheckIndexTemplateConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
@@ -25,6 +24,16 @@ func TestAccIndexTemplate_Basic(t *testing.T) {
 						regexp.MustCompile(`"template":"access_log-\*"`)),
 					resource.TestMatchResourceAttr("elasticsearch_index_template.foobar", "template",
 						regexp.MustCompile(`"mappings":{"nginx":{"properties":{"timestamp":{`)),
+				),
+			},
+			{
+				Config: testAccCheckIndexDynamicTemplateConfig_basic,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"elasticsearch_index_template.foo", "name", "dynamic1"),
+					resource.TestMatchResourceAttr(
+						"elasticsearch_index_template.foo", "template",
+						regexp.MustCompile(`"integers":{`)),
 				),
 			},
 		},
@@ -37,14 +46,14 @@ func TestAccIndexTemplate_Update(t *testing.T) {
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckIndexTemplateDestroy,
 		Steps: []resource.TestStep{
-			resource.TestStep{
+			{
 				Config: testAccCheckIndexTemplateConfig_basic,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
 						"elasticsearch_index_template.foobar", "name", "template1"),
 				),
 			},
-			resource.TestStep{
+			{
 				Config: testAccCheckIndexTemplateConfig_update,
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr(
@@ -55,6 +64,26 @@ func TestAccIndexTemplate_Update(t *testing.T) {
 						regexp.MustCompile(`"timestamp":{`)),
 					resource.TestMatchResourceAttr("elasticsearch_index_template.foobar", "template",
 						regexp.MustCompile(`"request_uri":{`)),
+				),
+			},
+			{
+				Config: testAccCheckIndexDynamicTemplateConfig_basic,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"elasticsearch_index_template.foo", "name", "dynamic1"),
+				),
+			},
+			{
+				Config: testAccCheckIndexDynamicTemplateConfig_update,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(
+						"elasticsearch_index_template.foo", "name", "dynamic1"),
+					resource.TestMatchResourceAttr("elasticsearch_index_template.foo", "template",
+						regexp.MustCompile(`"index_patterns":\["dynamic-\*`)),
+					resource.TestMatchResourceAttr("elasticsearch_index_template.foo", "template",
+						regexp.MustCompile(`"fields":{`)),
+					resource.TestMatchResourceAttr("elasticsearch_index_template.foo", "template",
+						regexp.MustCompile(`"strings":{`)),
 				),
 			},
 		},
@@ -69,7 +98,7 @@ func testAccCheckIndexTemplateDestroy(s *terraform.State) error {
 			continue
 		}
 
-		_, err := clients.V5Client.IndexGetTemplate(rs.Primary.ID).Do(context.Background())
+		err := indexTemplateDelete(clients, rs.Primary.ID)
 		if err == nil {
 			return fmt.Errorf("Index template still exists")
 		}
@@ -113,11 +142,87 @@ resource "elasticsearch_index_template" "foobar" {
         },
         "request_uri": {
           "type": "text",
-          "index": "not_analyzed"
+          "index": "false"
         }
       }
     }
   }
+}
+EOF
+}`
+
+const testAccCheckIndexDynamicTemplateConfig_basic = `
+resource "elasticsearch_index_template" "foo" {
+    name         = "dynamic1"
+	template = <<EOF
+{
+	"index_patterns": ["dynamic-*"],
+	"settings": {
+		"number_of_shards": 1
+	},
+	"mappings": {
+		"_doc": {
+			"dynamic_templates": [
+				{
+					"integers": {
+						"match_mapping_type": "long",
+						"mapping": {
+							"type": "integer"
+						}
+					}
+				},
+				{
+					"hoge": {
+						"match_mapping_type": "long",
+						"mapping": {
+							"type": "integer"
+						}
+					}
+				}
+			]
+		}
+	}
+}
+EOF
+}`
+
+const testAccCheckIndexDynamicTemplateConfig_update = `
+resource "elasticsearch_index_template" "foo" {
+    name         = "dynamic1"
+	template = <<EOF
+{
+	"index_patterns": ["dynamic-*"],
+	"settings": {
+		"number_of_shards": 1
+	},
+	"mappings": {
+		"_doc": {
+			"dynamic_templates": [
+				{
+					"integers": {
+						"match_mapping_type": "long",
+						"mapping": {
+							"type": "integer"
+						}
+					}
+				},
+				{
+					"strings": {
+						"match_mapping_type": "string",
+						"mapping": {
+							"type": "text",
+							"fields": {
+								"raw": {
+									"type":  "keyword",
+									"ignore_above": 256
+								}
+							}
+						}
+					}
+				}
+			]
+		}
+	}
 }
 EOF
 }`
