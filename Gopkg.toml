@@ -35,7 +35,7 @@
 
 [[constraint]]
   name = "gopkg.in/olivere/elastic.v6"
-  version = "6.1.27"
+  version = "6.2.15"
 
 [[constraint]]
   name = "gopkg.in/olivere/elastic.v5"

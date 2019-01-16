@@ -15,10 +15,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/olivere/elastic"
-	"github.com/olivere/elastic/aws"
 	"github.com/olivere/env"
 	"github.com/smartystreets/go-aws-auth"
+
+	"github.com/olivere/elastic"
+	"github.com/olivere/elastic/aws"
 )
 
 func main() {
@@ -50,6 +51,7 @@ func main() {
 	client, err := elastic.NewClient(
 		elastic.SetURL(*url),
 		elastic.SetSniff(*sniff),
+		elastic.SetHealthcheck(*sniff),
 		elastic.SetHttpClient(signingClient),
 	)
 	if err != nil {
