@@ -137,6 +137,14 @@ func IsConflict(err interface{}) bool {
 	return IsStatusCode(err, http.StatusConflict)
 }
 
+// IsForbidden returns true if the given error indicates that Elasticsearch
+// returned HTTP status 403. This happens e.g. due to a missing license.
+// The err parameter can be of type *elastic.Error, elastic.Error,
+// *http.Response or int (indicating the HTTP status code).
+func IsForbidden(err interface{}) bool {
+	return IsStatusCode(err, http.StatusForbidden)
+}
+
 // IsStatusCode returns true if the given error indicates that the Elasticsearch
 // operation returned the specified HTTP status code. The err parameter can be of
 // type *http.Response, *Error, Error, or int (indicating the HTTP status code).
@@ -156,17 +164,20 @@ func IsStatusCode(err interface{}, code int) bool {
 
 // -- General errors --
 
-// shardsInfo represents information from a shard.
-type shardsInfo struct {
-	Total      int `json:"total"`
-	Successful int `json:"successful"`
-	Failed     int `json:"failed"`
+// ShardsInfo represents information from a shard.
+type ShardsInfo struct {
+	Total      int             `json:"total"`
+	Successful int             `json:"successful"`
+	Failed     int             `json:"failed"`
+	Failures   []*ShardFailure `json:"failures,omitempty"`
 }
 
-// shardOperationFailure represents a shard failure.
-type shardOperationFailure struct {
-	Shard  int    `json:"shard"`
-	Index  string `json:"index"`
-	Status string `json:"status"`
-	// "reason"
+// ShardFailure represents details about a failure.
+type ShardFailure struct {
+	Index   string                 `json:"_index,omitempty"`
+	Shard   int                    `json:"_shard,omitempty"`
+	Node    string                 `json:"_node,omitempty"`
+	Reason  map[string]interface{} `json:"reason,omitempty"`
+	Status  string                 `json:"status,omitempty"`
+	Primary bool                   `json:"primary,omitempty"`
 }
