@@ -1,3 +1,7 @@
+## 0.0.7
+
+* Support dynamic template [#8](https://github.com/kjmkznr/terraform-provider-elasticsearch/pull/8)
+
 ## 0.0.6
 
 * Support Elasticsearch v6
